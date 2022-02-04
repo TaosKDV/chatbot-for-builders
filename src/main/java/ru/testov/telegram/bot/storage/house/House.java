@@ -1,4 +1,4 @@
-package ru.testov.telegram.bot.storage;
+package ru.testov.telegram.bot.storage.house;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.meta.api.objects.Chat;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.User;
-import ru.testov.telegram.bot.storage.House;
+import ru.testov.telegram.bot.storage.house.House;
 
 
 public class Client {

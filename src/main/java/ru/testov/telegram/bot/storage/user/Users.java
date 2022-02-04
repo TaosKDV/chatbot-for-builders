@@ -1,4 +1,4 @@
-package ru.testov.telegram.bot.storage;
+package ru.testov.telegram.bot.storage.user;
 
 import java.util.List;
 import lombok.Getter;

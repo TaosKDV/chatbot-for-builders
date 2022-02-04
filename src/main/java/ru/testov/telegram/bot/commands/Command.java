@@ -17,7 +17,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.bots.AbsSender;
 import ru.testov.telegram.bot.client.Client;
 import ru.testov.telegram.bot.storage.DBJson;
-import ru.testov.telegram.bot.storage.House;
+import ru.testov.telegram.bot.storage.house.House;
 
 /**
  * Суперкласс для команд

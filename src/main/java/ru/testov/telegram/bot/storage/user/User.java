@@ -1,10 +1,11 @@
-package ru.testov.telegram.bot.storage;
+package ru.testov.telegram.bot.storage.user;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import lombok.Getter;
 import lombok.Setter;
+import ru.testov.telegram.bot.storage.house.House;
 
 public class User {
 
@@ -27,7 +28,7 @@ public class User {
         return Objects.requireNonNullElseGet(this.houseList, ArrayList::new);
     }
 
-    User(String chatId, String userName, String status, List<House> houseList) {
+    public User(String chatId, String userName, String status, List<House> houseList) {
         this.userName = userName;
         this.chatId = chatId;
         this.status = status;

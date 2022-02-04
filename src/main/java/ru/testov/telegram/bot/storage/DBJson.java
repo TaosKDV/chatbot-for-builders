@@ -15,6 +15,9 @@ import org.telegram.telegrambots.meta.api.objects.Chat;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import ru.testov.telegram.bot.client.Client;
 import ru.testov.telegram.bot.client.Status;
+import ru.testov.telegram.bot.storage.house.House;
+import ru.testov.telegram.bot.storage.user.User;
+import ru.testov.telegram.bot.storage.user.Users;
 
 import static ru.testov.telegram.bot.client.Status.NEW;
 

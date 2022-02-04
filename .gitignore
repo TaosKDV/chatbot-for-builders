@@ -1,2 +1,8 @@
 # Project exclude paths
-/target/
+.idea/**
+target/**
+build/**
+log/**
+src/main/resources/*.png
+src/main/resources/*.json
+*.iml

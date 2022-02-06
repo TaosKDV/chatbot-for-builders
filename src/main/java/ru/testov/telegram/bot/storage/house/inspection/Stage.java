@@ -12,7 +12,7 @@ public class Stage {
 
     @Getter
     @Setter
-    private String stageId;
+    private int stageId;
 
     @Getter
     @Setter
@@ -22,4 +22,12 @@ public class Stage {
     @Setter
     private List<Step> stepList;
 
+    public Step getStep(int id) {
+        for (Step step : stepList) {
+            if (step.getId() == id) {
+                return step;
+            }
+        }
+        return null;
+    }
 }

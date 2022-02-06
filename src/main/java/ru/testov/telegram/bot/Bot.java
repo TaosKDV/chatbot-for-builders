@@ -1,5 +1,8 @@
 package ru.testov.telegram.bot;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,16 +14,26 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.testov.telegram.bot.client.Client;
 import ru.testov.telegram.bot.commands.Command;
 import ru.testov.telegram.bot.commands.callback.query.CallbackQueryHandler;
+import ru.testov.telegram.bot.commands.keyboard.InlineKeyboardMarkupUtil;
 import ru.testov.telegram.bot.commands.service.StartCommand;
 import ru.testov.telegram.bot.storage.DBJson;
+import ru.testov.telegram.bot.storage.house.House;
+import ru.testov.telegram.bot.storage.house.HouseStatus;
+import ru.testov.telegram.bot.storage.house.inspection.Result;
+import ru.testov.telegram.bot.storage.house.inspection.Stage;
 
 import static ru.testov.telegram.bot.client.Status.ADD_ADDRESS_TO_NEW_HOUSE;
 import static ru.testov.telegram.bot.client.Status.ADD_NAME_TO_NEW_HOUSE;
+import static ru.testov.telegram.bot.client.Status.AUDIT;
+import static ru.testov.telegram.bot.client.Status.CHOICE_OF_STAGE;
 import static ru.testov.telegram.bot.client.Status.STARTED;
+import static ru.testov.telegram.bot.storage.house.HouseStatus.ADD_STAGE;
 
 public class Bot extends TelegramLongPollingBot {
 
@@ -82,8 +95,7 @@ public class Bot extends TelegramLongPollingBot {
         } else if (update.hasCallbackQuery()) {
             //todo возможно стоит добавить проверку что сообщение пришло от самого бота
             CallbackQueryHandler handler = new CallbackQueryHandler();
-            String text = handler.processing(update.getCallbackQuery());
-            setAnswer(update.getCallbackQuery().getMessage(), text);
+            setAnswer(handler.processing(update.getCallbackQuery()));
             return;
         }
         processNonCommandUpdate(update);
@@ -135,7 +147,7 @@ public class Bot extends TelegramLongPollingBot {
             }
             client.setStatus(ADD_ADDRESS_TO_NEW_HOUSE);
             DBJson.saveUser(client);
-            setAnswer(client, "Введите адрес объекта");
+            setAnswer(client, "Введите адрес объекта:");
             return;
         }
         if (client.getStatus() == ADD_ADDRESS_TO_NEW_HOUSE) {
@@ -146,15 +158,62 @@ public class Bot extends TelegramLongPollingBot {
             }
             client.setStatus(STARTED);
             DBJson.saveUser(client);
-            setAnswer(client, Command.getInlineKeyboard(client),
-                "Объект успешно добавлен!\n*Выберите объект из списка или добавьте новый* (обсудить необходимость этого текста)");
+            setAnswer(client, Command.getHouseListKey(client),
+                "Объект успешно добавлен!\nТеперь нажми на него для начала проверки.");
+            return;
+        }
+        if (client.getStatus() == AUDIT) {
+            auditProcessing(client, text);
             return;
         }
         answer = "Простите, я не понимаю Вас.\nВозможно, Вам поможет /help";
-
         logger.info(String.format("Пользователь %s. Завершена обработка сообщения \"%s\", не являющегося командой",
             client.getUserName(), text));
         setAnswer(client, answer);
+    }
+
+    private void auditProcessing(Client client, String text) {
+        House house = client.findHouse(HouseStatus.AUDIT);
+        Map<String, Integer> activeStep = client.getActiveStep();
+        Result result = new Result(text);
+        //todo сделать разветвление в случае не успешного результата
+        int stepId = activeStep.get("Step");
+        house.getInspectionTypesList().get(activeStep.get("InspectionTypes"))
+            .getStageList().get(activeStep.get("Stage"))
+            .getStepList().get(stepId)
+            .setResult(result);
+        int stepListSize = house.getInspectionTypesList().get(activeStep.get("InspectionTypes"))
+            .getStageList().get(activeStep.get("Stage"))
+            .getStepList().size();
+        if (stepListSize > stepId) {
+            activeStep.replace("Step", stepId, stepId + 1);
+        }
+        //если равны, значит был последний шаг проверки
+        if (stepListSize == activeStep.get("Step")) {
+            List<Stage> stageList = Objects.requireNonNull(DBJson.getInspectionType(house.getInspectionTypesList()
+                .get(activeStep.get("InspectionTypes")))).getStageList();//берем список этапов текущего типа работ
+            List<String[]> list = new ArrayList<>();
+            for (Stage stage : stageList) {
+                String[] str = {stage.getStageName(), String.valueOf(stage.getStageId())};
+                list.add(str);
+            }
+            house.setHouseStatus(ADD_STAGE);
+            client.setHouse(house);
+            client.setActiveStep(null);
+            client.setStatus(CHOICE_OF_STAGE);
+            DBJson.saveUser(client);
+            setAnswerAndKeyboardRemove(client, "Проверка успешно завершена!");
+            setAnswer(client, new InlineKeyboardMarkupUtil(list).getInlineKeyboardMarkup(),
+                "Выбери следующий этап работ.");
+        } else {
+            client.setHouse(house);
+            client.setActiveStep(activeStep);
+            DBJson.saveUser(client);
+            String answer = house.getInspectionTypesList().get(activeStep.get("InspectionTypes"))
+                .getStageList().get(activeStep.get("Stage"))
+                .getStepList().get(activeStep.get("Step")).getText();
+            setAnswer(client, answer);
+        }
     }
 
     /**
@@ -198,6 +257,26 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     /**
+     * Отправка ответа и удаление кастомной клавиатуры
+     *
+     * @param client данные клиента
+     * @param text   текст ответа
+     */
+    private void setAnswerAndKeyboardRemove(Client client, String text) {
+        SendMessage answer = new SendMessage();
+        answer.setText(text);
+        answer.setChatId(client.getChatId());
+        answer.setReplyMarkup(new ReplyKeyboardRemove(true));//очистак клавиатуры
+        try {
+            execute(answer);
+        } catch (TelegramApiException e) {
+            logger.error(String.format("Ошибка %s. Сообщение, не являющееся командой. Пользователь: %s", e.getMessage(),
+                client.getUserName()));
+            e.printStackTrace();
+        }
+    }
+
+    /**
      * Отправка ответа
      *
      * @param message данные сообщения
@@ -212,6 +291,20 @@ public class Bot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
             logger.error(String.format("Ошибка %s. Сообщение, не являющееся командой. Пользователь: %s", e.getMessage(),
                 message.getFrom()));
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Отправка ответа
+     *
+     * @param answer сообщение
+     */
+    private void setAnswer(SendMessage answer) {
+        try {
+            execute(answer);
+        } catch (TelegramApiException e) {
+            logger.error(String.format("Ошибка %s. Сообщение, не являющееся командой.", e.getMessage()));
             e.printStackTrace();
         }
     }

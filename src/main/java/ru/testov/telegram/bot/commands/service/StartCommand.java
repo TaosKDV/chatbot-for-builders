@@ -41,7 +41,9 @@ public class StartCommand extends Command {
                 SendMessage sendMessage = new SendMessage();
                 sendMessage.enableMarkdown(true);
                 sendMessage.setChatId(client.getChatId());
-                sendMessage.setText("Введите название (индентификатор) объекта");
+                sendMessage.setText(
+                    "Привет, " + client.getUserName() + "!\nЯ помогу тебе оценить устройство систем утепления фасадов!\n"
+                        + "Для начала работы давай заведем объект, подлежащий оценке.\n\nВведите название объекта (пример «ЖК Патриот»)");
                 absSender.execute(sendMessage);
             } catch (Exception e) {
                 logger.error(String.format("Ошибка %s. При отправке ответа.", e.getMessage()));
@@ -53,8 +55,9 @@ public class StartCommand extends Command {
                 SendMessage sendMessage = new SendMessage();
                 sendMessage.enableMarkdown(true);
                 sendMessage.setChatId(client.getChatId());
-                sendMessage.setText("Выберите объект из списка или добавьте новый");
-                sendMessage.setReplyMarkup(getInlineKeyboard(client));
+                sendMessage
+                    .setText("Привет, " + client.getUserName() + "!\nВыбери объект для проверки или создай новый.");
+                sendMessage.setReplyMarkup(getHouseListKeyAndNewObjectCreation(client));
                 absSender.execute(sendMessage);
             } catch (Exception e) {
                 logger.error(String.format("Ошибка %s. При отправке ответа.", e.getMessage()));

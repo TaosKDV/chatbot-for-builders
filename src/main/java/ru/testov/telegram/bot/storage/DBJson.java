@@ -6,8 +6,10 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +18,7 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import ru.testov.telegram.bot.client.Client;
 import ru.testov.telegram.bot.client.Status;
 import ru.testov.telegram.bot.storage.house.House;
+import ru.testov.telegram.bot.storage.house.inspection.InspectionTypes;
 import ru.testov.telegram.bot.storage.user.User;
 import ru.testov.telegram.bot.storage.user.Users;
 
@@ -26,6 +29,8 @@ public class DBJson {
     private static Logger logger = LoggerFactory.getLogger(DBJson.class);
 
     private static final String USER_FILE = "src/main/resources/clients.json";
+
+    private static final String[] TEMPLATES = {"src/main/resources/templates/facade.json"};
 
     public static Client findClient(Message message) {
         logger.info("Ищем пользователя через объект \"message\"");
@@ -50,8 +55,8 @@ public class DBJson {
         Status status = getUserStatus(chatId);
         if (status == NEW) {
             logger.info("Сохраняем нового пользователя ID - " + chatId + " Статус - " + status);
-            saveUser(chatId, userName, status, null);
-            return new Client(chatId, userName, status, null);
+            saveUser(chatId, userName, status, null, null);
+            return new Client(chatId, userName, status, null, null);
         } else {
             logger.info("Берем пользователя из файла ID - " + chatId + " Статус - " + status);
             try (FileReader reader = new FileReader(USER_FILE)) {
@@ -60,7 +65,7 @@ public class DBJson {
                 for (User user : userList) {
                     if (user.getChatId().equals(chatId)) {
                         return new Client(user.getChatId(), user.getUserName(),
-                            Status.valueOf(user.getStatus()), user.getHouseList());
+                            Status.valueOf(user.getStatus()), user.getHouseList(), user.getActiveStep());
                     }
                 }
             } catch (IOException e) {
@@ -72,11 +77,13 @@ public class DBJson {
 
     public static void saveUser(Client client) {
         Objects.nonNull(client.getStatus());
-        saveUser(client.getChatId(), client.getUserName(), client.getStatus(), client.getHouseList());
+        saveUser(client.getChatId(), client.getUserName(), client.getStatus(), client.getHouseList(),
+            client.getActiveStep());
     }
 
     //не далать публичным, использовать перегрузку метода
-    private static void saveUser(String chatId, String userName, Status status, List<House> houseList) {
+    private static void saveUser(String chatId, String userName, Status status, List<House> houseList,
+        Map<String, Integer> activeStep) {
         logger.info("Сохранение пользователя ID - " + chatId + " Статус - " + status);
         Gson gson = new Gson();
         Users users = null;
@@ -90,11 +97,15 @@ public class DBJson {
                     logger.info("Пользователь найден ID - " + chatId);
                     userFound = true;
                     logger.info("Обновляем статус с \"" + use.getStatus() + "\" на \"" + status + "\"");
-                    use.setStatus(status.toString());//обновляем статус
+                    use.setStatus(status.toString());
+                    logger.info("Обновляем значение активного шага c \"" + use.getActiveStep() + "\" на \""
+                        + activeStep + "\"");
+                    use.setActiveStep(activeStep);
                     logger.info("Обновляем список домов с [" + House.getHouseListString(use.getHouseList())
                         + "] на [" + House.getHouseListString(houseList) + "]");
-                    use.setHouseList(houseList);//обновляем список домов
+                    use.setHouseList(houseList);
                     userList.set(i, use);//заменяем
+                    use.setActiveStep(activeStep);//обновляем статус активного шага
                 }
             }
             if (!userFound) {
@@ -155,5 +166,32 @@ public class DBJson {
             e.printStackTrace();
         }
     }
+
+    //===========TEMPLATES============
+
+    public static List<InspectionTypes> getInspectionTypesList() {
+        List<InspectionTypes> inspectionTypesList = new ArrayList<>();
+        for (String pathname : TEMPLATES) {
+            try (FileReader reader = new FileReader(pathname)) {
+                InspectionTypes inspectionTypes = new Gson().fromJson(reader, InspectionTypes.class);
+                inspectionTypesList.add(inspectionTypes);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return inspectionTypesList;
+    }
+
+    public static InspectionTypes getInspectionType(InspectionTypes inspectionType) {
+        int typeId = inspectionType.getTypeId();
+        List<InspectionTypes> inspectionTypesList = getInspectionTypesList();
+        for (InspectionTypes it : inspectionTypesList) {
+            if (it.getTypeId() == typeId) {
+                return it;
+            }
+        }
+        return null;
+    }
+
 
 }

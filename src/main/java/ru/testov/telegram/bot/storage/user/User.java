@@ -2,6 +2,7 @@ package ru.testov.telegram.bot.storage.user;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,6 +21,10 @@ public class User {
     @Getter
     @Setter
     private String status;
+
+    @Getter
+    @Setter
+    private Map<String, Integer> activeStep;
 
     @Setter
     private List<House> houseList;

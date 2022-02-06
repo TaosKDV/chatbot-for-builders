@@ -1,6 +1,7 @@
 package ru.testov.telegram.bot.client;
 
 import java.util.List;
+import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.slf4j.Logger;
@@ -9,6 +10,11 @@ import org.telegram.telegrambots.meta.api.objects.Chat;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.User;
 import ru.testov.telegram.bot.storage.house.House;
+import ru.testov.telegram.bot.storage.house.HouseStatus;
+import ru.testov.telegram.bot.storage.house.inspection.Step;
+
+import static ru.testov.telegram.bot.storage.house.HouseStatus.ADD_ADDRESS;
+import static ru.testov.telegram.bot.storage.house.HouseStatus.NEW;
 
 
 public class Client {
@@ -28,23 +34,29 @@ public class Client {
 
     @Getter
     @Setter
+    private Map<String, Integer> activeStep;
+
+    @Getter
+    @Setter
     private List<House> houseList;
 
-    public Client(String chatId, String userName, Status status, List<House> houseList) {
+    public Client(String chatId, String userName, Status status, List<House> houseList, Map<String, Integer> activeStep) {
         this.chatId = chatId;
         this.userName = userName;
         this.status = status;
         this.houseList = houseList;
+        this.activeStep = activeStep;
     }
 
-    public Client(Chat chat, User user, Status status, List<House> houseList) {
-        this(chat.getId().toString(), getUserName(user), status, houseList);
+    public Client(Chat chat, User user, Status status, List<House> houseList, Map<String, Integer> activeStep) {
+        this(chat.getId().toString(), getUserName(user), status, houseList, activeStep);
     }
 
     public String addHouseName(String houseName) {
         logger.info("Добавление пользователю ID - " + chatId + " имя дома \"" + houseName + "\"");
         House house = new House();
         house.setHouseName(houseName);
+        house.setHouseStatus(ADD_ADDRESS);
         for (House he : this.houseList) {//проверяем уникальность названия
             if (he.getHouseName().equals(house.getHouseName())) {
                 return "Объект с таким названием уже существует";
@@ -56,20 +68,18 @@ public class Client {
 
     public String addHouseAddress(String houseAddress) {
         logger.info("Добавление пользователю ID - " + chatId + " адреса дома \"" + houseAddress + "\"");
-        boolean houseFound = false;
         for (int i = 0; i < this.houseList.size(); i++) {
             House he = this.houseList.get(i);
-            if (he.getHouseAddress() == null) {//проверяем наличие адреса, при отсутствии добавляем адрес
-                houseFound = true;
+            //проверяем отсутствие адреса и статус дома
+            if (he.getHouseAddress() == null && he.getHouseStatus() == ADD_ADDRESS) {
                 he.setHouseAddress(houseAddress);
+                he.setHouseStatus(NEW);
                 this.houseList.set(i, he);
+                return null;
             }
         }
-        if (!houseFound) {
-            logger.error("Дом без адреса не найден ID - " + chatId);
-            return "Не получилось добавить адрес объекта! Попробуйте воспользоваться командой /start или /addNewHouse";
-        }
-        return null;
+        logger.error("Дом без адреса не найден ID - " + chatId);
+        return "Не получилось добавить адрес объекта! Попробуйте воспользоваться командой /start или /addNewHouse";
     }
 
 
@@ -112,12 +122,25 @@ public class Client {
         return this.chatId;
     }
 
-    public boolean findHouse(String houseName) {
+    public House findHouse(String houseName) {
         for (House house : houseList) {
             if (house.getHouseName().equals(houseName)) {
-                return true;
+                return house;
             }
         }
-        return false;
+        return null;
+    }
+
+    public House findHouse(HouseStatus houseStatus) {
+        for (House house : houseList) {
+            if (house.getHouseStatus() == houseStatus) {
+                return house;
+            }
+        }
+        return null;
+    }
+
+    public void setHouse(House house) {
+        this.houseList.set(this.houseList.indexOf(house), house);
     }
 }

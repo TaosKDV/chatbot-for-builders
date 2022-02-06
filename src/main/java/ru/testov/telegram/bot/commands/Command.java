@@ -13,9 +13,9 @@ import org.telegram.telegrambots.meta.api.objects.Chat;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.bots.AbsSender;
 import ru.testov.telegram.bot.client.Client;
+import ru.testov.telegram.bot.commands.keyboard.InlineKeyboardMarkupUtil;
 import ru.testov.telegram.bot.storage.DBJson;
 import ru.testov.telegram.bot.storage.house.House;
 
@@ -65,112 +65,28 @@ public abstract class Command extends BotCommand {
     public abstract void commandProcessing(AbsSender absSender, Client client);
 
     /**
-     * Формирование клавиатуры (под сообщением) с объектами
+     * Формирование клавиатуры со списком объектов
      */
-    public static InlineKeyboardMarkup getInlineKeyboard(Client client) {
-        List<List<InlineKeyboardButton>> lists = new ArrayList<>();
+    public static InlineKeyboardMarkup getHouseListKey(Client client) {
+        List<String[]> list = new ArrayList<>();
         for (House house : client.getHouseList()) {
-            InlineKeyboardButton button = new InlineKeyboardButton(house.getHouseName());
-            button.setCallbackData(house.getHouseName());
-            List<InlineKeyboardButton> listButton = new ArrayList<>();
-            listButton.add(button);
-            lists.add(listButton);
+            String[] strings = {house.getHouseName(), house.getHouseName()};
+            list.add(strings);
         }
-        {
-            InlineKeyboardButton button = new InlineKeyboardButton("\uD83C\uDFE0\n Создать новый объект");
-            button.setCallbackData("Создать новый объект");
-            List<InlineKeyboardButton> listButton = new ArrayList<>();
-            listButton.add(button);
-            lists.add(listButton);
-        }
-        InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup();
-        keyboard.setKeyboard(lists);
-        return keyboard;
+        return new InlineKeyboardMarkupUtil(list).getInlineKeyboardMarkup();
     }
 
-
-
-
-   /* void sendAnswer(AbsSender absSender, Long chatId, String commandName, String userName) {
-        //Отправка несколькоих строк клавиатуры
-        // ArrayList<KeyboardRow> keyboardRows = new ArrayList<>();
-        //        KeyboardRow keyboardFirstRow = new KeyboardRow();
-        //        KeyboardRow keyboardSecondRow = new KeyboardRow();
-        //        keyboardMarkup.setSelective(true);
-        //        keyboardMarkup.setResizeKeyboard(true);
-        //        keyboardMarkup.setOneTimeKeyboard(false);
-        //        keyboardFirstRow.add("1");
-        //        keyboardFirstRow.add("2");
-        //        keyboardSecondRow.add("3");
-        //        keyboardSecondRow.add("4");
-        //        keyboardRows.add(keyboardFirstRow);
-        //        keyboardRows.add(keyboardSecondRow);
-        //        keyboardMarkup.setKeyboard(keyboardRows);
-
-        keyboardMarkup = new ReplyKeyboardMarkup();
-        KeyboardRow keyboardRow = new KeyboardRow();
-        keyboardMarkup.setSelective(true);
-        keyboardMarkup.setResizeKeyboard(true);
-        keyboardMarkup.setOneTimeKeyboard(false);
-//        keyboardRows.clear();
-//        keyboardFirstRow.clear();
-//        keyboardSecondRow.clear();
-//        keyboardRow.add("✅");
-//        keyboardRow.add("Не осмотрено");
-//        keyboardRow.add("❌");
-        keyboardRow.add("\uD83C\uDFE0\n Добавить объект");
-        keyboardMarkup.setKeyboard(Collections.singletonList(keyboardRow));
-
-        //KeyboardRow keyboardRow = new KeyboardRow();
-        //            keyboardMarkup.setSelective(true);
-        //            keyboardMarkup.setResizeKeyboard(true);
-        //            keyboardMarkup.setOneTimeKeyboard(false);
-        ////        keyboardRows.clear();
-        ////        keyboardFirstRow.clear();
-        ////        keyboardSecondRow.clear();
-        //            keyboardRow.add("\uD83C\uDFE0 Добавить объект");
-
-        //группа картинок можно использовать только картинки из интернета (по ссылке)
-//        MediaPhoto inputMediaPhoto_1 = new InputMediaPhoto();
-//        inputMediaPhoto_1.setMedia("/Users/de.konovalov/IdeaProjects/sco/sco-innovations/TestBot/src/main/resources/1.png");
-//        InputMediaPhoto inputMediaPhoto_2 = new InputMediaPhoto();
-//        inputMediaPhoto_2.setMedia("/Users/de.konovalov/IdeaProjects/sco/sco-innovations/TestBot/src/main/resources/2.png");
-//
-//        ArrayList<InputMedia> inputMediaPhotoArrayList = new ArrayList<>();
-//        inputMediaPhotoArrayList.add(inputMediaPhoto_1);
-//        inputMediaPhotoArrayList.add(inputMediaPhoto_2);
-//
-//        SendMediaGroup sendMediaGroup = new SendMediaGroup();
-//        sendMediaGroup.setChatId(chatId.toString());
-//        sendMediaGroup.setMedias(inputMediaPhotoArrayList);
-
-        //одна картинка
-//        SendPhoto sendPhoto = new SendPhoto();
-//        sendPhoto.setChatId(chatId.toString());
-//        sendPhoto.setPhoto(new InputFile(
-//            new File("/Users/de.konovalov/IdeaProjects/sco/sco-innovations/TestBot/src/main/resources/1.png")));
-//        sendPhoto.setCaption("1");
-        SendMessage message = new SendMessage();
-        message.enableMarkdown(true);
-        message.setChatId(chatId.toString());
-        message.setText(getText());
-        message.setReplyMarkup(keyboardMarkup);
-
-        try {
-            absSender.execute(message);
-        } catch (TelegramApiException e) {
-            logger.error(String.format("Ошибка %s. Команда %s. Пользователь: %s",
-                e.getMessage(), commandName, userName));
-            e.printStackTrace();
+    /**
+     * Формирование клавиатуры со списком объектов и кнопкой "Создать новый объект"
+     */
+    public static InlineKeyboardMarkup getHouseListKeyAndNewObjectCreation(Client client) {
+        List<String[]> list = new ArrayList<>();
+        for (House house : client.getHouseList()) {
+            String[] strings = {house.getHouseName(), house.getHouseName()};
+            list.add(strings);
         }
-//        sendPhoto.setPhoto(new InputFile(
-//            new File("/Users/de.konovalov/IdeaProjects/sco/sco-innovations/TestBot/src/main/resources/2.png")));
-//        try {
-//            absSender.execute(sendPhoto);
-//        } catch (TelegramApiException e) {
-//            logger.error(String.format("Ошибка %s. Команда %s. Пользователь: %s",
-//                e.getMessage(), commandName, userName));
-//            e.printStackTrace();
-//        }
-    }*/
+        String[] strings = {"\uD83C\uDFE0\n Создать новый объект", "Создать новый объект"};
+        list.add(strings);
+        return new InlineKeyboardMarkupUtil(list).getInlineKeyboardMarkup();
+    }
 }

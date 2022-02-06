@@ -14,7 +14,6 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.testov.telegram.bot.client.Client;
@@ -81,6 +80,11 @@ public class Bot extends TelegramLongPollingBot {
         return commandRegistry.register(botCommand);
     }
 
+    /**
+     * Обработка действий пользователя (сообщений, нажатий и отправки команд)
+     *
+     * @param update Update
+     */
     @Override
     public final void onUpdateReceived(Update update) {
         if (update.hasMessage()) {
@@ -101,6 +105,12 @@ public class Bot extends TelegramLongPollingBot {
         processNonCommandUpdate(update);
     }
 
+    /**
+     * Фильтр сообщений от ботов и групповых чатов
+     *
+     * @param message сообщение
+     * @return true - если сообщение от бота или группового чата
+     */
     private boolean filter(Message message) {
         if (message.getFrom().getIsBot()) {
             logger.warn("Предупреждение. К боту обращается другой бот!\nUser:\n" + message.getFrom()
@@ -131,10 +141,16 @@ public class Bot extends TelegramLongPollingBot {
     public void processNonCommandUpdate(Update update) {
         Message message = update.getMessage();
         Client client = DBJson.findClient(message);
-        Objects.nonNull(client);
+        Objects.requireNonNull(client);
         nonCommandProcessing(client, message.getText());
     }
 
+    /**
+     * Обработка текстовых сообщений пользователя
+     *
+     * @param client данные клиента
+     * @param text   сообщение пользователя
+     */
     public void nonCommandProcessing(Client client, String text) {
         logger.info("Начата обработка сообщения \"" + text + "\", не являющегося командой от пользователя ID - "
             + client.getChatId() + " Статус - " + client.getStatus());
@@ -172,19 +188,24 @@ public class Bot extends TelegramLongPollingBot {
         setAnswer(client, answer);
     }
 
+    /**
+     * Процесс оценки шагов
+     *
+     * @param client данные клиента
+     * @param text   сообщение с результатом проверки
+     */
     private void auditProcessing(Client client, String text) {
         House house = client.findHouse(HouseStatus.AUDIT);
         Map<String, Integer> activeStep = client.getActiveStep();
         Result result = new Result(text);
         //todo сделать разветвление в случае не успешного результата
         int stepId = activeStep.get("Step");
-        house.getInspectionTypesList().get(activeStep.get("InspectionTypes"))
-            .getStageList().get(activeStep.get("Stage"))
-            .getStepList().get(stepId)
+        house.getInspectionTypes(activeStep.get("InspectionTypes"))
+            .getStage(activeStep.get("Stage"))
+            .getStep(stepId)
             .setResult(result);
-        int stepListSize = house.getInspectionTypesList().get(activeStep.get("InspectionTypes"))
-            .getStageList().get(activeStep.get("Stage"))
-            .getStepList().size();
+        int stepListSize = house.getInspectionTypes(activeStep.get("InspectionTypes"))
+            .getStage(activeStep.get("Stage")).getStepList().size();
         if (stepListSize > stepId) {
             activeStep.replace("Step", stepId, stepId + 1);
         }
@@ -209,9 +230,9 @@ public class Bot extends TelegramLongPollingBot {
             client.setHouse(house);
             client.setActiveStep(activeStep);
             DBJson.saveUser(client);
-            String answer = house.getInspectionTypesList().get(activeStep.get("InspectionTypes"))
-                .getStageList().get(activeStep.get("Stage"))
-                .getStepList().get(activeStep.get("Step")).getText();
+            String answer = house.getInspectionTypes(activeStep.get("InspectionTypes"))
+                .getStage(activeStep.get("Stage"))
+                .getStep(activeStep.get("Step")).getText();
             setAnswer(client, answer);
         }
     }
@@ -257,26 +278,6 @@ public class Bot extends TelegramLongPollingBot {
     }
 
     /**
-     * Отправка ответа и удаление кастомной клавиатуры
-     *
-     * @param client данные клиента
-     * @param text   текст ответа
-     */
-    private void setAnswerAndKeyboardRemove(Client client, String text) {
-        SendMessage answer = new SendMessage();
-        answer.setText(text);
-        answer.setChatId(client.getChatId());
-        answer.setReplyMarkup(new ReplyKeyboardRemove(true));//очистак клавиатуры
-        try {
-            execute(answer);
-        } catch (TelegramApiException e) {
-            logger.error(String.format("Ошибка %s. Сообщение, не являющееся командой. Пользователь: %s", e.getMessage(),
-                client.getUserName()));
-            e.printStackTrace();
-        }
-    }
-
-    /**
      * Отправка ответа
      *
      * @param message данные сообщения
@@ -305,6 +306,26 @@ public class Bot extends TelegramLongPollingBot {
             execute(answer);
         } catch (TelegramApiException e) {
             logger.error(String.format("Ошибка %s. Сообщение, не являющееся командой.", e.getMessage()));
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Отправка ответа и удаление кастомной клавиатуры
+     *
+     * @param client данные клиента
+     * @param text   текст ответа
+     */
+    private void setAnswerAndKeyboardRemove(Client client, String text) {
+        SendMessage answer = new SendMessage();
+        answer.setText(text);
+        answer.setChatId(client.getChatId());
+        answer.setReplyMarkup(new ReplyKeyboardRemove(true));//очистак клавиатуры
+        try {
+            execute(answer);
+        } catch (TelegramApiException e) {
+            logger.error(String.format("Ошибка %s. Сообщение, не являющееся командой. Пользователь: %s", e.getMessage(),
+                client.getUserName()));
             e.printStackTrace();
         }
     }

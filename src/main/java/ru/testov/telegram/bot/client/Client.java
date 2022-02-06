@@ -11,11 +11,9 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.User;
 import ru.testov.telegram.bot.storage.house.House;
 import ru.testov.telegram.bot.storage.house.HouseStatus;
-import ru.testov.telegram.bot.storage.house.inspection.Step;
 
 import static ru.testov.telegram.bot.storage.house.HouseStatus.ADD_ADDRESS;
 import static ru.testov.telegram.bot.storage.house.HouseStatus.NEW;
-
 
 public class Client {
 
@@ -40,7 +38,8 @@ public class Client {
     @Setter
     private List<House> houseList;
 
-    public Client(String chatId, String userName, Status status, List<House> houseList, Map<String, Integer> activeStep) {
+    public Client(String chatId, String userName, Status status, List<House> houseList,
+        Map<String, Integer> activeStep) {
         this.chatId = chatId;
         this.userName = userName;
         this.status = status;

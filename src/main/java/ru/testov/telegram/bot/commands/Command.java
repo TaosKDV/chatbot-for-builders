@@ -8,7 +8,6 @@ import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.telegram.telegrambots.extensions.bots.commandbot.commands.BotCommand;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Chat;
 import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -18,6 +17,8 @@ import ru.testov.telegram.bot.client.Client;
 import ru.testov.telegram.bot.commands.keyboard.InlineKeyboardMarkupUtil;
 import ru.testov.telegram.bot.storage.DBJson;
 import ru.testov.telegram.bot.storage.house.House;
+
+import static ru.testov.telegram.bot.TextForUser.CREATE_NEW_OBJECT;
 
 /**
  * Суперкласс для команд
@@ -34,19 +35,6 @@ public abstract class Command extends BotCommand {
         super(identifier, description);
     }
 
-    private void sendError(AbsSender absSender, Chat chat, String message) {
-        try {
-            SendMessage sendMessage = new SendMessage();
-            sendMessage.enableMarkdown(true);
-            sendMessage.setChatId(chat.getId().toString());
-            sendMessage.setText(message);
-            absSender.execute(sendMessage);
-        } catch (Exception e) {
-            logger.error(String.format("Ошибка %s. При отправке ответа.", e.getMessage()));
-            e.printStackTrace();
-        }
-    }
-
     @Override
     public void execute(AbsSender absSender, User user, Chat chat, String[] strings) {
         Client client = DBJson.findClient(chat, user);
@@ -56,8 +44,6 @@ public abstract class Command extends BotCommand {
         logger.info(String.format("Пользователь ID - %s. Завершено выполнение команды %s", client.getChatId(),
             this.getCommandIdentifier()));
     }
-
-    public abstract String getText();
 
     /**
      * Отправка ответа пользователю
@@ -85,7 +71,7 @@ public abstract class Command extends BotCommand {
             String[] strings = {house.getHouseName(), house.getHouseName()};
             list.add(strings);
         }
-        String[] strings = {"\uD83C\uDFE0\n Создать новый объект", "Создать новый объект"};
+        String[] strings = {"\uD83C\uDFE0\n " + CREATE_NEW_OBJECT, CREATE_NEW_OBJECT};
         list.add(strings);
         return new InlineKeyboardMarkupUtil(list).getInlineKeyboardMarkup();
     }

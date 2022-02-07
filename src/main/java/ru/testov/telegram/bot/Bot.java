@@ -13,8 +13,6 @@ import org.telegram.telegrambots.extensions.bots.commandbot.commands.IBotCommand
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import ru.testov.telegram.bot.client.Client;
 import ru.testov.telegram.bot.commands.Command;
@@ -27,11 +25,14 @@ import ru.testov.telegram.bot.storage.house.HouseStatus;
 import ru.testov.telegram.bot.storage.house.inspection.Result;
 import ru.testov.telegram.bot.storage.house.inspection.Stage;
 
+import static ru.testov.telegram.bot.TextForUser.SORRY_I_DO_NOT_UNDERSTAND_YOU;
 import static ru.testov.telegram.bot.client.Status.ADD_ADDRESS_TO_NEW_HOUSE;
 import static ru.testov.telegram.bot.client.Status.ADD_NAME_TO_NEW_HOUSE;
 import static ru.testov.telegram.bot.client.Status.AUDIT;
 import static ru.testov.telegram.bot.client.Status.CHOICE_OF_STAGE;
 import static ru.testov.telegram.bot.client.Status.STARTED;
+import static ru.testov.telegram.bot.commands.SendMessageUtil.getSendMessage;
+import static ru.testov.telegram.bot.commands.SendMessageUtil.getSendMessageAndKeyboardRemove;
 import static ru.testov.telegram.bot.storage.house.HouseStatus.ADD_STAGE;
 
 public class Bot extends TelegramLongPollingBot {
@@ -115,14 +116,15 @@ public class Bot extends TelegramLongPollingBot {
         if (message.getFrom().getIsBot()) {
             logger.warn("Предупреждение. К боту обращается другой бот!\nUser:\n" + message.getFrom()
                 + "\nChat:\n" + message.getChatId());
-            setAnswer(message, "Извините, но я не работаю с ботами.");
+            setAnswer(getSendMessage(message, "Извините, но я не работаю с ботами."));
             return true;
         }
         if (!message.getChat().isUserChat()) {
             logger.warn(
                 "Предупреждение. К боту обращаются не из пользовательского чата!\nUser:\n" + message.getFrom()
                     + "\nChat:\n" + message.getChatId());
-            setAnswer(message, "Извините, но я работаю только с пользовательскими чатами.");
+            setAnswer(
+                getSendMessage(message, "Извините, но я работаю только с пользовательскими чатами."));
             return true;
         }
         return false;
@@ -158,34 +160,33 @@ public class Bot extends TelegramLongPollingBot {
         if (client.getStatus() == ADD_NAME_TO_NEW_HOUSE) {
             answer = client.addHouseName(text);
             if (answer != null) {
-                setAnswer(client, answer);
+                setAnswer(getSendMessage(client, answer));
                 return;
             }
             client.setStatus(ADD_ADDRESS_TO_NEW_HOUSE);
             DBJson.saveUser(client);
-            setAnswer(client, "Введите адрес объекта:");
+            setAnswer(getSendMessage(client, "Введите адрес объекта:"));
             return;
         }
         if (client.getStatus() == ADD_ADDRESS_TO_NEW_HOUSE) {
             answer = client.addHouseAddress(text);
             if (answer != null) {
-                setAnswer(client, answer);
+                setAnswer(getSendMessage(client, answer));
                 return;
             }
             client.setStatus(STARTED);
             DBJson.saveUser(client);
-            setAnswer(client, Command.getHouseListKey(client),
-                "Объект успешно добавлен!\nТеперь нажми на него для начала проверки.");
+            setAnswer(getSendMessage(client, Command.getHouseListKey(client),
+                "Объект успешно добавлен!\nТеперь нажми на него для начала проверки."));
             return;
         }
         if (client.getStatus() == AUDIT) {
             auditProcessing(client, text);
             return;
         }
-        answer = "Простите, я не понимаю Вас.\nВозможно, Вам поможет /help";
         logger.info(String.format("Пользователь %s. Завершена обработка сообщения \"%s\", не являющегося командой",
             client.getUserName(), text));
-        setAnswer(client, answer);
+        setAnswer(getSendMessage(client, SORRY_I_DO_NOT_UNDERSTAND_YOU));
     }
 
     /**
@@ -223,9 +224,9 @@ public class Bot extends TelegramLongPollingBot {
             client.setActiveStep(null);
             client.setStatus(CHOICE_OF_STAGE);
             DBJson.saveUser(client);
-            setAnswerAndKeyboardRemove(client, "Проверка успешно завершена!");
-            setAnswer(client, new InlineKeyboardMarkupUtil(list).getInlineKeyboardMarkup(),
-                "Выбери следующий этап работ.");
+            setAnswer(getSendMessageAndKeyboardRemove(client, "Проверка успешно завершена!"));
+            setAnswer(getSendMessage(client,
+                new InlineKeyboardMarkupUtil(list).getInlineKeyboardMarkup(), "Выбери следующий этап работ."));
         } else {
             client.setHouse(house);
             client.setActiveStep(activeStep);
@@ -233,66 +234,7 @@ public class Bot extends TelegramLongPollingBot {
             String answer = house.getInspectionTypes(activeStep.get("InspectionTypes"))
                 .getStage(activeStep.get("Stage"))
                 .getStep(activeStep.get("Step")).getText();
-            setAnswer(client, answer);
-        }
-    }
-
-    /**
-     * Отправка ответа с экранной клавиатурой
-     *
-     * @param client               данные клиента
-     * @param inlineKeyboardMarkup экранная клавиатура
-     * @param text                 текст ответа
-     */
-    private void setAnswer(Client client, InlineKeyboardMarkup inlineKeyboardMarkup, String text) {
-        SendMessage answer = new SendMessage();
-        answer.setText(text);
-        answer.setChatId(client.getChatId());
-        answer.setReplyMarkup(inlineKeyboardMarkup);
-        try {
-            execute(answer);
-        } catch (TelegramApiException e) {
-            logger.error(String.format("Ошибка %s. Сообщение, не являющееся командой. Пользователь: %s", e.getMessage(),
-                client.getUserName()));
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Отправка ответа
-     *
-     * @param client данные клиента
-     * @param text   текст ответа
-     */
-    private void setAnswer(Client client, String text) {
-        SendMessage answer = new SendMessage();
-        answer.setText(text);
-        answer.setChatId(client.getChatId());
-        try {
-            execute(answer);
-        } catch (TelegramApiException e) {
-            logger.error(String.format("Ошибка %s. Сообщение, не являющееся командой. Пользователь: %s", e.getMessage(),
-                client.getUserName()));
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Отправка ответа
-     *
-     * @param message данные сообщения
-     * @param text    текст ответа
-     */
-    private void setAnswer(Message message, String text) {
-        SendMessage answer = new SendMessage();
-        answer.setText(text);
-        answer.setChatId(message.getChatId().toString());
-        try {
-            execute(answer);
-        } catch (TelegramApiException e) {
-            logger.error(String.format("Ошибка %s. Сообщение, не являющееся командой. Пользователь: %s", e.getMessage(),
-                message.getFrom()));
-            e.printStackTrace();
+            setAnswer(getSendMessage(client, answer));
         }
     }
 
@@ -306,26 +248,6 @@ public class Bot extends TelegramLongPollingBot {
             execute(answer);
         } catch (TelegramApiException e) {
             logger.error(String.format("Ошибка %s. Сообщение, не являющееся командой.", e.getMessage()));
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Отправка ответа и удаление кастомной клавиатуры
-     *
-     * @param client данные клиента
-     * @param text   текст ответа
-     */
-    private void setAnswerAndKeyboardRemove(Client client, String text) {
-        SendMessage answer = new SendMessage();
-        answer.setText(text);
-        answer.setChatId(client.getChatId());
-        answer.setReplyMarkup(new ReplyKeyboardRemove(true));//очистак клавиатуры
-        try {
-            execute(answer);
-        } catch (TelegramApiException e) {
-            logger.error(String.format("Ошибка %s. Сообщение, не являющееся командой. Пользователь: %s", e.getMessage(),
-                client.getUserName()));
             e.printStackTrace();
         }
     }

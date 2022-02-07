@@ -7,6 +7,8 @@ import org.telegram.telegrambots.meta.bots.AbsSender;
 import ru.testov.telegram.bot.client.Client;
 import ru.testov.telegram.bot.commands.Command;
 
+import static ru.testov.telegram.bot.commands.SendMessageUtil.getSendMessage;
+
 /**
  * Команда "Помощь"
  */
@@ -18,23 +20,9 @@ public class HelpCommand extends Command {
         super(identifier, description);
     }
 
-    @Override
-    public String getText() {
-        return """
-            Я тестовый фасадный бот ;)
-             *Список команд*
-             /settings - просмотреть текущие настройки
-             /help - помощь
-            """;
-    }
-
     public void commandProcessing(AbsSender absSender, Client client) {
         try {
-            SendMessage sendMessage = new SendMessage();
-            sendMessage.enableMarkdown(true);
-            sendMessage.setChatId(client.getChatId());
-            sendMessage.setText("Извините, данный функционал еще не реализован.");
-            absSender.execute(sendMessage);
+            absSender.execute(getSendMessage(client, "Извините, данный функционал еще не реализован."));
         } catch (
 
             Exception e) {

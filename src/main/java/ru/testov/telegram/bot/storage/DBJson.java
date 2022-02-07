@@ -76,7 +76,7 @@ public class DBJson {
     }
 
     public static void saveUser(Client client) {
-        Objects.nonNull(client.getStatus());
+        Objects.requireNonNull(client.getStatus());
         saveUser(client.getChatId(), client.getUserName(), client.getStatus(), client.getHouseList(),
             client.getActiveStep());
     }

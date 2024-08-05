@@ -13,7 +13,6 @@ public class BotLaunch {
             TelegramBotsApi tba = new TelegramBotsApi(DefaultBotSession.class);
             //раскомитить при запуске не через idea
             //tba.registerBot(new Bot(getenv.get("BOT_NAME"), getenv.get("BOT_TOKEN")));
-            tba.registerBot(new Bot("TestFacade_bot", "5027898574:AAHXORfBZt0kDOPzstHBEtzMQTVeqN81Ilo"));
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
